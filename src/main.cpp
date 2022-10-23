@@ -4,7 +4,6 @@
 #include <BLEUtils.h>
 #include <SparkFun_TB6612.h>
 #include "ServoEasing.hpp"
-
 // BLE SECTION
 BLEServer *pServer = NULL;
 
@@ -33,7 +32,7 @@ BLECharacteristic *box_characteristic = NULL;
 #define wrist_pitch 19
 #define wrist_roll 18
 #define gripper 5
-#define sonar_servo 23
+#define sonar_servo 4
 
 // sonar sensor pin
 #define sonar_trig 4
@@ -46,7 +45,7 @@ BLECharacteristic *box_characteristic = NULL;
 Motor motor1 = Motor(AIN1, AIN2, PWMA, 1, STBY);
 Motor motor2 = Motor(BIN1, BIN2, PWMB, 1, STBY);
 
-ServoEasing SonarServo;
+Servo SonarServo;
 ServoEasing BASE;
 ServoEasing SHOULDER;
 ServoEasing ELBOW;
@@ -117,19 +116,19 @@ void handle_command(String cmd)
       Serial.println("moving shoulder servo to" + pos);
       break;
     case 3:
-      ELBOW.startEaseTo(pos, 40);
+      ELBOW.startEaseTo(pos, 60);
       Serial.println("moving elbow servo to" + pos);
       break;
     case 4:
-      WRIST_PITCH.startEaseTo(pos, 40);
+      WRIST_PITCH.startEaseTo(pos, 60);
       Serial.println("moving wrist pitch servo to" + pos);
       break;
     case 5:
-      WRIST_ROLL.startEaseTo(pos, 40);
+      WRIST_ROLL.startEaseTo(pos, 60);
       Serial.println("moving wrist roll servo to" + pos);
       break;
     case 6:
-      GRIPPER.startEaseTo(pos, 40);
+      GRIPPER.startEaseTo(pos, 80);
       Serial.println("moving gripper servo to" + pos);
       break;
     default:
@@ -200,28 +199,20 @@ void setup()
   Serial.println("Initiated connection successfully :)");
 
   BASE.attach(base, 90);
-  SHOULDER.attach(shoulder, 180);
-  ELBOW.attach(elbow, 170);
+  SHOULDER.attach(shoulder, 0);
+  ELBOW.attach(elbow, 0);
   WRIST_PITCH.attach(wrist_pitch, 90);
   WRIST_ROLL.attach(wrist_roll, 90);
   GRIPPER.attach(gripper, 0);
-  SonarServo.attach(sonar_servo, 90);
+  SonarServo.attach(sonar_servo);
 
   BASE.setEasingType(EASE_QUADRATIC_IN_OUT);
   SHOULDER.setEasingType(EASE_QUADRATIC_IN_OUT);
-  WRIST_PITCH.setEasingType(EASE_QUADRATIC_IN_OUT);
-  WRIST_ROLL.setEasingType(EASE_QUADRATIC_IN_OUT);
 }
 
 void loop()
 {
   if (Serial2.available()){
-    String reading = Serial2.readString(); // reading from serial2
-    char buf[50];
-    reading.toCharArray(buf, reading.length());  // converting string to char array
-    message_characteristic->setValue(buf); // sending over ble
-  }
-  if (Serial1.available()){
     String reading = Serial2.readString(); // reading from serial2
     char buf[50];
     reading.toCharArray(buf, reading.length());  // converting string to char array
