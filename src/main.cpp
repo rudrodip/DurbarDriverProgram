@@ -2,7 +2,6 @@
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
-#include "utils.h"
 #include <SparkFun_TB6612.h>
 #include "ServoEasing.hpp"
 
@@ -36,8 +35,6 @@ BLECharacteristic *box_characteristic = NULL;
 #define wrist_roll 18
 #define gripper 5
 #define sonar_servo 4
-#define opener1pin 12
-#define opener2pin 5
 
 int basePos = 95;
 int shoulderPos = 0;
@@ -45,20 +42,15 @@ int elbowPos = 0;
 int wristPitchPos = 90;
 int wristRollPos = 0;
 int gripperPos = 0;
-int opener1Pos = 0;
-int opener2Pos = 180;
 
 // esp32 to arduino serial communication pin
 #define rx 16
 #define tx 17
-
 int sonarServoPosition = 60;
 
 Motor motor1 = Motor(AIN1, AIN2, PWMA, 1, STBY);
 Motor motor2 = Motor(BIN1, BIN2, PWMB, 1, STBY);
 Servo SonarServo;
-Servo opener1;
-Servo opener2;
 
 ServoEasing BASE;
 ServoEasing SHOULDER;
@@ -66,6 +58,7 @@ ServoEasing ELBOW;
 ServoEasing WRIST_PITCH;
 ServoEasing WRIST_ROLL;
 ServoEasing GRIPPER;
+
 
 void handle_command(String cmd)
 {
@@ -163,35 +156,6 @@ void handle_command(String cmd)
       break;
     }
   }
-  else if (cmd == "open")
-  {
-    opener1.write(180);
-    opener2.write(0);
-    Serial.println(cmd);
-  }
-  else if (cmd == "close")
-  {
-    BASE.easeTo(95, 40);
-    SHOULDER.startEaseTo(50, 40);
-    ELBOW.startEaseTo(0, 40);
-    WRIST_PITCH.startEaseTo(90, 40);
-    WRIST_ROLL.startEaseTo(0, 40);
-    SHOULDER.startEaseTo(0, 40);
-    opener1.write(0);
-    opener2.write(180);
-    Serial.println(cmd);
-  }
-  else if (cmd =="intro"){
-    opener1.write(180);
-    opener2.write(0);
-    SHOULDER.startEaseTo(85, 40);
-    ELBOW.startEaseTo(40, 60);
-    WRIST_PITCH.startEaseTo(180, 80);
-    WRIST_ROLL.startEaseTo(90, 80);
-    BASE.easeTo(85, 40);
-    BASE.easeTo(95, 40);
-    Serial.println("intro");
-  }
   else
   {
     Serial.println(cmd);
@@ -260,8 +224,6 @@ void setup()
   WRIST_PITCH.attach(wrist_pitch, wristPitchPos);
   WRIST_ROLL.attach(wrist_roll, wristRollPos);
   GRIPPER.attach(gripper, gripperPos);
-  opener1.attach(opener1pin);
-  opener2.attach(opener2pin);
 
   Serial.println("Initiated connection successfully :)");
 }
@@ -311,10 +273,9 @@ void loop()
 {
   recvWithEndMarker();
   sendNewData();
-  float dis = distance();
-  Serial.println(dis);
+
   message_characteristic->notify(); // its to receive message
   message_characteristic->setValue(receivedChars);
-  message_characteristic->setValue(dis);
+
   delay(100);
 }

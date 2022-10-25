@@ -20,3 +20,6 @@
     .
     .
     end
+
+https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+link for arduino ide esp32 board installation
