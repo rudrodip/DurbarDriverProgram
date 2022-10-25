@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
-#define sonar_trig 4
-#define sonar_echo 2
+#define sonar_trig 2
+#define sonar_echo 15
 #define SOUND_SPEED 0.034
 
 float distance()

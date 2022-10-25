@@ -36,17 +36,29 @@ BLECharacteristic *box_characteristic = NULL;
 #define wrist_roll 18
 #define gripper 5
 #define sonar_servo 4
+#define opener1pin 12
+#define opener2pin 5
+
+int basePos = 95;
+int shoulderPos = 0;
+int elbowPos = 0;
+int wristPitchPos = 90;
+int wristRollPos = 0;
+int gripperPos = 0;
+int opener1Pos = 0;
+int opener2Pos = 180;
 
 // esp32 to arduino serial communication pin
 #define rx 16
 #define tx 17
 
 int sonarServoPosition = 60;
-#define servoDelayPerDegRotation 15
 
 Motor motor1 = Motor(AIN1, AIN2, PWMA, 1, STBY);
 Motor motor2 = Motor(BIN1, BIN2, PWMB, 1, STBY);
 Servo SonarServo;
+Servo opener1;
+Servo opener2;
 
 ServoEasing BASE;
 ServoEasing SHOULDER;
@@ -115,38 +127,69 @@ void handle_command(String cmd)
     switch (servoNum)
     {
     case 1:
-      BASE.startEaseTo(pos, 40);
+      if (shoulderPos < 85 || shoulderPos > 95){
+        SHOULDER.easeTo(85);
+      }
+      BASE.startEaseTo(pos, 50);
+      basePos = 50;
       Serial.println("moving base servo");
-      Serial2.println("moving base servo");
       break;
     case 2:
-      SHOULDER.startEaseTo(pos, 40);
+      SHOULDER.startEaseTo(pos, 50);
+      shoulderPos = pos;
       Serial.println("moving shoulder servo");
-      Serial2.println("moving shoulder servo");
       break;
     case 3:
-      ELBOW.startEaseTo(pos, 60);
+      ELBOW.startEaseTo(pos, 70);
+      elbowPos = pos;
       Serial.println("moving elbow servo");
-      Serial2.println("moving elbow servo");
       break;
     case 4:
-      WRIST_PITCH.startEaseTo(pos, 60);
+      WRIST_PITCH.startEaseTo(pos, 100);
+      wristPitchPos = pos;
       Serial.println("moving wrist pitch servo");
-      Serial2.println("moving wrist pitch servo");
       break;
     case 5:
-      WRIST_ROLL.startEaseTo(pos, 60);
+      WRIST_ROLL.startEaseTo(pos, 100);
+      wristRollPos = pos;
       Serial.println("moving wrist roll servo");
-      Serial2.println("moving wrist roll servo");
       break;
     case 6:
-      GRIPPER.startEaseTo(pos, 80);
+      GRIPPER.startEaseTo(pos, 100);
+      gripperPos = pos;
       Serial.println("moving gripper servo");
-      Serial2.println("moving gripper servo");
       break;
     default:
       break;
     }
+  }
+  else if (cmd == "open")
+  {
+    opener1.write(180);
+    opener2.write(0);
+    Serial.println(cmd);
+  }
+  else if (cmd == "close")
+  {
+    BASE.easeTo(95);
+    ELBOW.startEaseTo(0);
+    SHOULDER.startEaseTo(0);
+    WRIST_PITCH.startEaseTo(90);
+    WRIST_ROLL.startEaseTo(0);
+    opener1.write(0);
+    opener2.write(180);
+    Serial.println(cmd);
+  }
+  else if (cmd =="intro"){
+    opener1.write(180);
+    opener2.write(0);
+    SHOULDER.startEaseTo(85, 50);
+    ELBOW.startEaseTo(40, 60);
+    WRIST_PITCH.startEaseTo(180, 80);
+    WRIST_ROLL.startEaseTo(90, 80);
+    BASE.easeTo(85);
+    BASE.easeTo(95);
+    Serial.println("intro");
   }
   else
   {
@@ -159,13 +202,11 @@ class MyServerCallbacks : public BLEServerCallbacks
   void onConnect(BLEServer *pServer)
   {
     Serial.println("Connected");
-    Serial2.println("Connected");
   };
 
   void onDisconnect(BLEServer *pServer)
   {
     Serial.println("Disconnected");
-    Serial2.println("Disconnected");
   }
 };
 
@@ -176,7 +217,6 @@ class CharacteristicsCallbacks : public BLECharacteristicCallbacks
   {
     String message = pCharacteristic->getValue().c_str();
     Serial.println(message);
-    Serial2.println(message);
     handle_command(message);
   }
 };
@@ -213,56 +253,65 @@ void setup()
   message_characteristic->setCallbacks(new CharacteristicsCallbacks());
 
   SonarServo.attach(sonar_servo);
-  BASE.attach(base, 90);
-  SHOULDER.attach(shoulder, 0);
-  ELBOW.attach(elbow, 0);
-  WRIST_PITCH.attach(wrist_pitch, 90);
-  WRIST_ROLL.attach(wrist_roll, 90);
-  GRIPPER.attach(gripper, 0);
-
-  BASE.setEasingType(EASE_QUADRATIC_IN_OUT);
-  SHOULDER.setEasingType(EASE_QUADRATIC_IN_OUT);
+  BASE.attach(base, basePos);
+  SHOULDER.attach(shoulder, shoulderPos);
+  ELBOW.attach(elbow, elbowPos);
+  WRIST_PITCH.attach(wrist_pitch, wristPitchPos);
+  WRIST_ROLL.attach(wrist_roll, wristRollPos);
+  GRIPPER.attach(gripper, gripperPos);
+  opener1.attach(opener1pin);
+  opener2.attach(opener2pin);
 
   Serial.println("Initiated connection successfully :)");
 }
-unsigned long previousTime = 0;
+
+const byte numChars = 32;
+char receivedChars[numChars]; // an array to store the received data
+boolean newData = false;
+
+void recvWithEndMarker()
+{
+  static byte ndx = 0;
+  char endMarker = '\n';
+  char rc;
+
+  while (Serial2.available() > 0 && newData == false)
+  {
+    rc = Serial2.read();
+
+    if (rc != endMarker)
+    {
+      receivedChars[ndx] = rc;
+      ndx++;
+      if (ndx >= numChars)
+      {
+        ndx = numChars - 1;
+      }
+    }
+    else
+    {
+      receivedChars[ndx] = '\0'; // terminate the string
+      ndx = 0;
+      newData = true;
+    }
+  }
+}
+
+void sendNewData()
+{
+  if (newData == true)
+  {
+    Serial.println(receivedChars);
+    newData = false;
+  }
+}
 
 void loop()
 {
-  if (Serial2.available())
-  {
-    String reading = Serial2.readString(); // reading from serial2
-    char buf[50];
-    reading.toCharArray(buf, reading.length()); // converting string to char array
-    message_characteristic->setValue(buf);      // sending over ble
-  }
+  // recvWithEndMarker();
+  // sendNewData();
+  float dis = distance();
+  Serial.println(dis);
   message_characteristic->notify(); // its to receive message
-
-  // float dis = distance();
-  // String distance = "d" + String(dis) + "s" + String();
-  // char distanceBuf[6];
-  // distance.toCharArray(distanceBuf, distance.length());
-  // message_characteristic->setValue(distanceBuf);
-  // delay(100);
-
-  unsigned long currentTime = millis();
-  if (currentTime - previousTime >= servoDelayPerDegRotation)
-  {
-    SonarServo.write(sonarServoPosition);
-    if (sonarServoPosition < 120)
-    {
-      sonarServoPosition++;
-    }
-    else if (sonarServoPosition > 60)
-    {
-      sonarServoPosition--;
-    }
-    previousTime = currentTime;
-    float dis = distance();
-    String distance = "d" + String(dis) + "s" + String(sonarServoPosition);
-    char distanceBuf[20];
-    distance.toCharArray(distanceBuf, distance.length());
-    message_characteristic->setValue(distanceBuf);
-    Serial2.println(distance);
-  }
+  delay(100);
 }
