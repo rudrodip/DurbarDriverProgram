@@ -33,15 +33,16 @@ BLECharacteristic *box_characteristic = NULL;
 #define elbow 21
 #define wrist_pitch 19
 #define wrist_roll 18
-#define gripper 5
-#define sonar_servo 4
+#define opener1 5
+#define opener2 4
 
 int basePos = 95;
 int shoulderPos = 0;
 int elbowPos = 0;
 int wristPitchPos = 90;
 int wristRollPos = 0;
-int gripperPos = 0;
+int opener1pos = 180;
+int opener2pos = 0;
 
 // esp32 to arduino serial communication pin
 #define rx 16
@@ -50,15 +51,14 @@ int sonarServoPosition = 60;
 
 Motor motor1 = Motor(AIN1, AIN2, PWMA, 1, STBY);
 Motor motor2 = Motor(BIN1, BIN2, PWMB, 1, STBY);
-Servo SonarServo;
 
+Servo OpenerLeft;
+Servo OpenerRight;
 ServoEasing BASE;
 ServoEasing SHOULDER;
 ServoEasing ELBOW;
 ServoEasing WRIST_PITCH;
 ServoEasing WRIST_ROLL;
-ServoEasing GRIPPER;
-
 
 void handle_command(String cmd)
 {
@@ -147,15 +147,24 @@ void handle_command(String cmd)
       wristRollPos = pos;
       Serial.println("moving wrist roll servo");
       break;
-    case 6:
-      GRIPPER.startEaseTo(pos, 100);
-      gripperPos = pos;
-      Serial.println("moving gripper servo");
-      break;
     default:
       break;
     }
   }
+  else if (cmd == "open"){
+	OpenerLeft.write(0);
+	OpenerRight.write(180);
+	Serial.println("opening...");
+} else if (cmd == "close") {
+	BASE.easeTo(95, 50);
+	SHOULDER.easeTo(0, 50);
+	ELBOW.startEaseTo(0, 50);
+	WRIST_PITCH.startEaseTo(90, 80);
+	WRIST_ROLL.startEaseTo(0);
+	OpenerLeft.write(180);
+	OpenerRight.write(0);
+	Serial.println("closing...");
+}
   else
   {
     Serial.println(cmd);
@@ -217,13 +226,13 @@ void setup()
   message_characteristic->setValue("Connection Established");
   message_characteristic->setCallbacks(new CharacteristicsCallbacks());
 
-  SonarServo.attach(sonar_servo);
+  OpenerLeft.attach(opener1);
+  OpenerRight.attach(opener2);
   BASE.attach(base, basePos);
   SHOULDER.attach(shoulder, shoulderPos);
   ELBOW.attach(elbow, elbowPos);
   WRIST_PITCH.attach(wrist_pitch, wristPitchPos);
   WRIST_ROLL.attach(wrist_roll, wristRollPos);
-  GRIPPER.attach(gripper, gripperPos);
 
   Serial.println("Initiated connection successfully :)");
 }
