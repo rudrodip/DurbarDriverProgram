@@ -128,7 +128,7 @@ void handle_command(String cmd)
     {
     case 1:
       if (shoulderPos < 85 || shoulderPos > 95){
-        SHOULDER.easeTo(85);
+        SHOULDER.easeTo(85, 50);
       }
       BASE.startEaseTo(pos, 50);
       basePos = 50;
@@ -171,11 +171,12 @@ void handle_command(String cmd)
   }
   else if (cmd == "close")
   {
-    BASE.easeTo(95);
-    ELBOW.startEaseTo(0);
-    SHOULDER.startEaseTo(0);
-    WRIST_PITCH.startEaseTo(90);
-    WRIST_ROLL.startEaseTo(0);
+    BASE.easeTo(95, 40);
+    SHOULDER.startEaseTo(50, 40);
+    ELBOW.startEaseTo(0, 40);
+    WRIST_PITCH.startEaseTo(90, 40);
+    WRIST_ROLL.startEaseTo(0, 40);
+    SHOULDER.startEaseTo(0, 40);
     opener1.write(0);
     opener2.write(180);
     Serial.println(cmd);
@@ -183,12 +184,12 @@ void handle_command(String cmd)
   else if (cmd =="intro"){
     opener1.write(180);
     opener2.write(0);
-    SHOULDER.startEaseTo(85, 50);
+    SHOULDER.startEaseTo(85, 40);
     ELBOW.startEaseTo(40, 60);
     WRIST_PITCH.startEaseTo(180, 80);
     WRIST_ROLL.startEaseTo(90, 80);
-    BASE.easeTo(85);
-    BASE.easeTo(95);
+    BASE.easeTo(85, 40);
+    BASE.easeTo(95, 40);
     Serial.println("intro");
   }
   else
@@ -308,10 +309,12 @@ void sendNewData()
 
 void loop()
 {
-  // recvWithEndMarker();
-  // sendNewData();
+  recvWithEndMarker();
+  sendNewData();
   float dis = distance();
   Serial.println(dis);
   message_characteristic->notify(); // its to receive message
+  message_characteristic->setValue(receivedChars);
+  message_characteristic->setValue(dis);
   delay(100);
 }
